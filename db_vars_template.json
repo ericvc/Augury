@@ -1,0 +1,22 @@
+{
+	"EBIRD":{
+	  "API_KEY":"xxxxxxxx"
+	},
+	"MONGODB":{
+		"USERNAME":"xxxxxxxx",
+		"PASSWORD":"xxxxxxxx",
+		"ORGANIZATION":"xxxxxxxx",
+		"CLUSTER":"xxxxxxxx",
+		"DATABASE":"xxxxxxxx",
+		"COLLECTION":{
+			"NAME_1":"CollectionName"
+		}
+	},
+	"LOCATION":{
+		"NAME_1":{
+			"LONGITUDE":-999.0,
+			"LATITUDE":-999.0
+		}
+  	}
+}
+

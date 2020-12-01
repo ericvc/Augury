@@ -1,0 +1,6 @@
+diagram.odp
+db_vars.json
+.Rhistory
+__pycache__
+*.rds
+*.odp#
