@@ -32,6 +32,25 @@ functions across the two programming languages.
 
 ![](image/example.png)
 
+## **Updates**
+
+A number of changes have been made to improve user experience as well as
+add functionality for selecting geospatial data layers to overlay on the
+map. The program is now almost entirely reactive to changes in user
+inputs such that the interface will automatically update when new menu
+selections are made. This includes selecting ancillary GIS layers to
+cover the base (terrain) map, including data either from near-realtime
+MODIS satellite images (courtesy of the `MODISTools` package from
+[rOpenSci](https://ropensci.org/)) or long-term climatic variables from
+[WorldClim](https://worldclim.org/).
+
+![](image/example2.png)
+
+Smaller code edits were made to the underlying Python code that handles
+data exchange between the front-end and MongoDB servers, mostly to do
+with handling connection errors and changes to how client/collection
+variables are shared within an object.
+
 I am still finalizing the design and suite of features for the user
 interface, but have decided to upload the code for the current,
 functional (read: alpha) version of the program. Most of the back-end is
@@ -45,14 +64,8 @@ that is more than adequate for handling these tasks.
 own database and visualization dashboard\! Some features I hope to
 implement in the near-future include**:
 
-  - Satellite telemetry layers, such as NDVI and land use cover, to
-    overlay on the map.
   - A nested/collapsable data frame organized by species (in place of
     the simple table in the top right of the interface) for exploring
     individual observation records. JavaScript is not my strong suit,
     but this feature will be a great opportunity to learn from.
   - A picture of each bird species embedded within the hover tooltip.
-  - Additional plots for visualizing trends over time, which I hope will
-    come to mind once the coverage of the database can accomodate them
-    (e.g., seasonal trends).
-  - More query parameters to refine searches.

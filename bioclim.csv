@@ -1,0 +1,20 @@
+band,description,units
+bio1,Annual Mean Temperature,Degrees
+bio2,Mean Diurnal Range,Degrees
+bio3,Isothermality,BIO2/BIO7
+bio4,Temperature Seasonality,SD x 100
+bio5,Max. Temp. of Warmest Month,Degrees
+bio6,Min. Temp. of Coldest Month,Degrees
+bio7,Temperature Annual Range,Degrees
+bio8,Mean Temp. of Wettest Quarter,Degrees
+bio9,Mean Temp. of Driest Quarter,Degrees
+bio10,Mean Temp. of Warmest Quarter,Degrees
+bio11,Mean Temp. of Coldest Quarter,Degrees
+bio12,Annual Precipitation ,mm
+bio13,Precipitation of Wettest Month,mm
+bio14,Precipitation of Driest Month,mm
+bio15,Precipitation Seasonality,SD x 100
+bio16,Precipitation of Wettest Quarter,mm
+bio17,Precipitation of Driest Quarter,mm
+bio18,Precipitation of Warmest Quarter,mm
+bio19,Precipitation of Coldest Quarter,mm

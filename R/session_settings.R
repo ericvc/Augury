@@ -1,4 +1,5 @@
 ## ggplot theme
+library(ggplot2)
 plot_theme <- theme(text = element_text(family="sans"),
                     legend.position="bottom",
                     panel.background = element_rect(fill=alpha("white",0)),
@@ -24,18 +25,14 @@ css <- HTML("
 
   
 ## MongoDB client creator
-#Sys.setenv(RETICULATE_PYTHON = "/home/eric/miniconda3/bin/python3.7")
+# Sys.setenv(RETICULATE_PYTHON = "/home/eric/miniconda3/bin/python3.7")
 reticulate::source_python("Python/augury.py")
 mongodb_client <- function(){
+  db_vars <- read_json("db_vars.json")
   ## Create a MongoDB client via Python wrapper
-  x <- Augury(MONGODB$USERNAME,
-              MONGODB$PASSWORD,
-              MONGODB$ORGANIZATION,
-              MONGODB$CLUSTER,
-              MONGODB$DATABASE)
+  x <- Augury(db_vars)
   return(x)
-
-  }
+}
 
 
 ## Function for calculating a KDE of all record locations to overlay on map
@@ -53,12 +50,12 @@ kde_raster <- function(COLLECTION){
                            data = df,
                            proj4string = p4s)
  
-  # calculate unweighted KDE (output in raster format)	
+  # calculate weighted KDE (output in raster format)	
   pts_kde <-
     sp.kde(
       x = spdf,
       y = spdf$weight,
-      bw = 0.01,
+      bw = 0.05,
       nc = 1000,
       nr = 1000,
       standardize = TRUE,
@@ -80,10 +77,34 @@ create_labels <- function(data){
                   paste("Location: ","<i>",locName[i], "</i>", sep=""),
                   paste0("Coordinates: ", round(lat[i], 2), ", ", round(lng[i], 2)),
                   paste0("Date: ", strftime(obsDt[i], format = "%Y-%m-%d")),
+                  #sprintf("https://ebird.org/species/%s", speciesCode[i]), # embed image
                   sep = "<br/>"
                 )
             )
     label[i] <- paste0("<div style=text-align:left>", lab, "</div>")
   }
   return(label)
+}
+
+
+## Create circular polygon centered on points XY with radius R (used for spatial mask)
+circularPolygon <- function(xy, radius, crs){
+  
+  if(!hasArg(crs)){
+    p4s <- sp::CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+  }
+  else{
+    p4s <- sp::CRS(crs)
+  }
+  
+  x <- xy$LONGITUDE # center x
+  y <- xy$LATITUDE # center y
+  n <- 250 # number of points on curve
+  r <- radius / 87 # radius (scaled to km units)
+  pts <- seq(0, 2 * pi, length.out = n)
+  require(sp)
+  crds <- cbind(x + r * sin(pts), y + r * cos(pts))
+  spoly <- SpatialPolygons(list(Polygons(list(Polygon(crds)), "line")), proj4string = p4s)
+  return(spoly)
+
 }

@@ -3,4 +3,7 @@ db_vars.json
 .Rhistory
 __pycache__
 *.rds
-*.odp#
+*.odp
+WorldClim_Data/
+Python/remove_duplicates
+backups

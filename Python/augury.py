@@ -4,6 +4,10 @@ import json
 import pandas as pd
 from datetime import datetime
 import pymongo
+from pymongo.errors import DuplicateKeyError, ServerSelectionTimeoutError
+from bson.json_util import dumps
+import os
+import time
 
 
 class eBirdQuery:
@@ -51,16 +55,14 @@ class eBirdQuery:
     def get_recent_nearby_observations(self):
         
         url = self.__base_url + ("&lat=%.2f&lng=%.2f&dist=%s&back=%s" % (self.lat, self.lon, self.__search_radius, self.__back))
-        print(url)
         response = requests.request("GET", url, headers={'X-eBirdApiToken': self.__api_key}, data={})
         
         # if response status code is 200
         if response:
 
-            self.recent_nearby_obs = pd.DataFrame(response.json())
-            print(f"eBird observation records found.")               
+            self.recent_nearby_obs = pd.DataFrame(response.json())       
             self.num_nearby_records = self.recent_nearby_obs.shape[0]
-            print(f"{self.num_nearby_records} records returned.")
+            print(f"\n{self.num_nearby_records} eBird observation records returned.")
             return True
 
         else:
@@ -71,13 +73,17 @@ class eBirdQuery:
 
 class Augury:
 
-    def __init__(self, USERNAME: str, PASSWORD: str, ORGANIZATION: str, CLUSTER: str, DATABASE: str):
+    def __init__(self, database_variables: dict):
     
         ## MONGODB SETTINGS
-        self.ORGANIZATION = ORGANIZATION
-        self.CLUSTER = CLUSTER
-        self.DATABASE = DATABASE
-        self.MONGO_URI = f"mongodb+srv://{USERNAME}:{PASSWORD}@{ORGANIZATION}.mongodb.net/{DATABASE}?retryWrites=true&w=majority"
+        self.db_vars = database_variables
+        self.USERNAME = database_variables["MONGODB"]["USERNAME"]
+        self.PASSWORD = database_variables["MONGODB"]["PASSWORD"]
+        self.ORGANIZATION = database_variables["MONGODB"]["ORGANIZATION"]
+        self.CLUSTER = database_variables["MONGODB"]["CLUSTER"]
+        self.DATABASE = database_variables["MONGODB"]["DATABASE"]
+        self.MONGO_URI = f"mongodb+srv://{self.USERNAME}:{self.PASSWORD}@{self.ORGANIZATION}.mongodb.net/{self.DATABASE}?retryWrites=true&w=majority"
+        self.API_KEY = database_variables["EBIRD"]["API_KEY"]
 
     def pandas_to_json(self, df):
         """Converts eBird data from a pandas DataFrame format to JSON, with slight modifications, allowing uploads to MongoDB Atlas"""
@@ -87,16 +93,19 @@ class Augury:
         df["loc"] = loc
         records = json.loads(df.T.to_json()).values()  # Convert data to json format
         for row in records:
-            row['obsDt'] = datetime.strptime(row['obsDt'], "%Y-%m-%d %H:%M")  # Conver timestamp to datetime format
+            try:
+                row['obsDt'] = datetime.strptime(row['obsDt'], "%Y-%m-%d %H:%M")  # Convert timestamp to datetime format
+            except ValueError:
+                row['obsDt'] = datetime.strptime(row['obsDt'], "%Y-%m-%d")  # Convert timestamp to datetime format (date only)
         return records
 
-    def upload_to_mongodb(self, COLLECTION: str, LOCATION: dict, API_KEY: str, back: int=2, initialize: bool=False):
+    def upload_to_mongodb(self, COLLECTION: str, back: int=2, initialize: bool=False):
         """Downloads eBird data and uploads formatted version to MongoDB Atlas"""
         ## GET STARTING EBIRD DATA
         # INITIALIZE EBIRD CLIENT
-        ebird = eBirdQuery(API_KEY, 
-                           latitude=LOCATION["LATITUDE"], 
-                           longitude=LOCATION["LONGITUDE"], 
+        ebird = eBirdQuery(self.API_KEY, 
+                           latitude=self.db_vars["LOCATION"][COLLECTION]["LATITUDE"], 
+                           longitude=self.db_vars["LOCATION"][COLLECTION]["LONGITUDE"], 
                            search_radius=50,  
                            back=back)
         ebird.get_recent_nearby_observations()
@@ -105,9 +114,8 @@ class Augury:
         db = self.client[self.DATABASE]  # Connect to database
         collection = db[COLLECTION]  # Connect to client
         records = self.pandas_to_json(data)
-        recordsInserted = 0
         if initialize:
-            """If initializing a database/collection, also create index to prevent duplicate entries"""
+            """If initializing a database/collection, also create a compound index to prevent duplicate entries"""
             collection.insert_many(records)
             collection.create_index(
                 [
@@ -118,24 +126,33 @@ class Augury:
                 ],
                 unique=True
             )
-        else:
-            """For each record, attempt insert. If duplicate entry, catch error and print notification."""
-            for rec in records:
-                try:
-                    collection.insert_one(rec)
-                    print("Record uploaded to MongoDB database.")
-                    recordsInserted += 1
-                except:
-                    print("Duplicate entry detected. Skipping record.")
-        print(f"\n{recordsInserted} new records inserted to '{COLLECTION}' collection")
+
+        """For each record, attempt insert. If duplicate entry, catch error and notify."""
+        recordsInserted = 0
+        duplicatesFound = 0
+        print(f"Attempting to upload records to '{COLLECTION}' collection.")
+        for rec in records:
+            try:
+                collection.insert_one(rec)
+                recordsInserted += 1
+            except pymongo.errors.DuplicateKeyError:
+                duplicatesFound += 1
+            except pymongo.errors.ServerSelectionTimeoutError:
+                print("Server connection timeout error.")
+            finally:
+                time.sleep(0.1)
+        print(f"{duplicatesFound} duplicate records were found.")
+        print(f"{recordsInserted} new records inserted to the collection.\n")
         self.close_connection()  # Close MongoDB connection
 
-    def spatial_query(self, COLLECTION: str, PROXIMITY: int, species: list, MIN_DATE, MAX_DATE, LOCATION: list):
+
+    def spatial_query(self, COLLECTION: str, PROXIMITY: int, species: list, MIN_DATE, MAX_DATE):
         """Query MongoDB database and return the results in a DataFrame object"""
         self.open_connection()  # Create MongoDB client
         # convert your date string to datetime object
         MIN_DATE_DT = datetime.strptime(MIN_DATE, "%Y-%m-%d %H:%M")
         MAX_DATE_DT = datetime.strptime(MAX_DATE, "%Y-%m-%d %H:%M")
+        LOCATION = self.db_vars["LOCATION"][COLLECTION]
         db = self.client[self.DATABASE]  # Connect to database
         collection = db[COLLECTION]  # Connect to collection
         query = {
@@ -150,11 +167,12 @@ class Augury:
         self.close_connection()  # Close MongoDB connection
         return df
 
-    def distinct_species(self, COLLECTION: str, PROXIMITY: int, LOCATION: list):
+    def distinct_species(self, COLLECTION: str, PROXIMITY: int):
         """Get a list of distinct species contained in the entire collection"""
         self.open_connection()  # Create MongoDB client
         db = self.client[self.DATABASE]  # Connect to database
         collection = db[COLLECTION]  # Connect to collection
+        LOCATION = self.db_vars["LOCATION"][COLLECTION]
         pipeline = [
             {"$match":
                 {
@@ -175,16 +193,40 @@ class Augury:
         for doc in docs:
             species.append(doc["_id"]["comName"])
             count.append(doc["count"])
-            #print(doc)
+        df = pd.DataFrame({"Species":species, "Records":count})
+        self.close_connection()  # Close MongoDB connection
+        return df
+
+    def distinct_sites(self, COLLECTION: str, species: list, PROXIMITY: int):
+        """Get a list of distinct sites contained in the entire collection"""
+        self.open_connection()  # Create MongoDB client
+        db = self.client[self.DATABASE]  # Connect to database
+        collection = db[COLLECTION]  # Connect to collection
+        pipeline = [
+            {"$group": 
+                {
+                "_id": {"locName":"$locName"},
+                "count": {"$sum":1}
+                }
+            },
+            {"$sort":{"_id.locName":1}}
+        ]
+        docs = collection.aggregate(pipeline)
+        species = list()
+        count = list()
+        for doc in docs:
+            species.append(doc["_id"]["comName"])
+            count.append(doc["count"])
         df = pd.DataFrame({"Species":species, "Records":count})
         self.close_connection()  # Close MongoDB connection
         return df
     
-    def date_range(self, COLLECTION: str, species: list, LOCATION: list, PROXIMITY: int):
+    def date_range(self, COLLECTION: str, species: list, PROXIMITY: int):
         """Get a range of dates for the selected species"""
         self.open_connection()  # Create MongoDB client
         db = self.client[self.DATABASE]  # Connect to database
         collection = db[COLLECTION]  # Connect to collection
+        LOCATION = self.db_vars["LOCATION"][COLLECTION]
         query = {"comName":
                     {"$in": species},
                 "loc": {"$geoWithin": {"$center": [LOCATION, PROXIMITY]}}
@@ -232,3 +274,29 @@ class Augury:
         df = pd.DataFrame({"lng":lng, "lat":lat, "weight":weight})
         self.close_connection()  # Close MongoDB connection
         return df
+
+    def update_collections(self, back: int=3):
+        """Update all collections in the database"""
+        self.open_connection()  # Create MongoDB client
+        db = self.client[self.DATABASE]  # Connect to database
+        try:
+            collections = db.collection_names()  # Get list of collection names
+        except ServerSelectionTimeoutError:
+            print("An error was encountered trying to get a list of collections. Is your IP address whitelisted for this database?")
+        for COLLECTION in collections:
+            self.upload_to_mongodb(COLLECTION=COLLECTION, back=back, initialize=False)
+
+    def backup_collections(self, backup_db_dir: str="backups"):
+        """Downloads collections from remote MongoDB database to a local JSON file."""
+        if not os.path.isdir(backup_db_dir):
+            os.mkdir(backup_db_dir)
+        self.open_connection()  # Create MongoDB client
+        db = self.client[self.DATABASE]  # Connect to database
+        collection_names = db.collection_names()  # Get list of collection names
+        for collection_name in collection_names:
+            collection = getattr(db, collection_name)
+            docs = collection.find()
+            jsonpath = os.path.join(backup_db_dir, (collection_name + ".json"))
+            with open(jsonpath, "wb") as jsonfile:
+                jsonfile.write(dumps(docs).encode())
+        self.close_connection()
