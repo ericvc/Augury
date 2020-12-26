@@ -250,12 +250,15 @@ class Augury:
         except AttributeError:
             print("No attibute 'client' found")
     
-    def location_records(self, COLLECTION: str):
+    def location_records(self, COLLECTION: str, PROXIMITY: int):
         """Returns unique records in a collection as a DataFrame object"""
         self.open_connection()  # Create MongoDB client
         db = self.client[self.DATABASE]  # Connect to database
         collection = db[COLLECTION]  # Connect to collection
+        LOCATION = self.db_vars["LOCATION"][COLLECTION]
         pipeline = [
+            {"$match":{"loc": {"$geoWithin": {"$center": [LOCATION, PROXIMITY]}}}
+            },
             {"$group": 
                 {
                 "_id": {"lat":"$lat", "lng":"$lng"},

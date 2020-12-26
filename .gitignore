@@ -5,5 +5,7 @@ __pycache__
 *.rds
 *.odp
 WorldClim_Data/
+GeoData/
 Python/remove_duplicates
 backups
+temp/

@@ -1,20 +1,20 @@
-band,description,units
-bio1,Annual Mean Temperature,Degrees
-bio2,Mean Diurnal Range,Degrees
-bio3,Isothermality,BIO2/BIO7
-bio4,Temperature Seasonality,SD x 100
-bio5,Max. Temp. of Warmest Month,Degrees
-bio6,Min. Temp. of Coldest Month,Degrees
-bio7,Temperature Annual Range,Degrees
-bio8,Mean Temp. of Wettest Quarter,Degrees
-bio9,Mean Temp. of Driest Quarter,Degrees
-bio10,Mean Temp. of Warmest Quarter,Degrees
-bio11,Mean Temp. of Coldest Quarter,Degrees
-bio12,Annual Precipitation ,mm
-bio13,Precipitation of Wettest Month,mm
-bio14,Precipitation of Driest Month,mm
-bio15,Precipitation Seasonality,SD x 100
-bio16,Precipitation of Wettest Quarter,mm
-bio17,Precipitation of Driest Quarter,mm
-bio18,Precipitation of Warmest Quarter,mm
-bio19,Precipitation of Coldest Quarter,mm
+product,band,description,units
+Temperature,bio1,Annual Mean Temperature,Degrees
+Temperature,bio2,Mean Diurnal Range,Degrees
+Temperature,bio3,Isothermality,BIO2/BIO7
+Temperature,bio4,Temperature Seasonality,SDx100
+Temperature,bio5,Max. Temp. of Warmest Month,Degrees
+Temperature,bio6,Min. Temp. of Coldest Month,Degrees
+Temperature,bio7,Temperature Annual Range,Degrees
+Temperature,bio8,Mean Temp. of Wettest Quarter,Degrees
+Temperature,bio9,Mean Temp. of Driest Quarter,Degrees
+Temperature,bio10,Mean Temp. of Warmest Quarter,Degrees
+Temperature,bio11,Mean Temp. of Coldest Quarter,Degrees
+Precipitation,bio12,Annual Precipitation ,mm
+Precipitation,bio13,Precipitation of Wettest Month,mm
+Precipitation,bio14,Precipitation of Driest Month,mm
+Precipitation,bio15,Precipitation Seasonality,SDx100
+Precipitation,bio16,Precipitation of Wettest Quarter,mm
+Precipitation,bio17,Precipitation of Driest Quarter,mm
+Precipitation,bio18,Precipitation of Warmest Quarter,mm
+Precipitation,bio19,Precipitation of Coldest Quarter,mm

@@ -8,8 +8,8 @@ from Python.augury import Augury, eBirdQuery
 with open("db_vars.json") as f:
     db_vars = json.load(f)
 
-## INITIALIZE MONGODB CLIENT
-augury = Augury(database_variables=db_vars)
+## Initialize MongoDB Client
+augury = Augury(db_vars)
 
 ## Update all collections
 augury.update_collections(back=30)
